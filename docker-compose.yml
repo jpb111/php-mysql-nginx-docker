@@ -1,0 +1,68 @@
+version: '3.8'
+services:
+
+    app: 
+        build: 
+           context: .
+           dockerfile: docker/app/Dockerfile
+        image: codeigniter
+        container_name: app
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - ./app/src:/var/www/
+            - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+        networks:
+          - app-network
+        depends_on: 
+          - db
+    db:
+        image: mysql:5.7
+        container_name: db
+        environment: 
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        command: --default-authentication-plugin=mysql_native_password
+        restart: unless-stopped
+        volumes:
+            - ./docker/mysql:/docker-entrypoint-initdb.d
+            - .docker/mysql/db_data:/usr/data
+        ports:
+            - 3306:3306
+        networks:
+          - app-network    
+    
+    webserver:
+        image:  nginx:alpine
+        container_name: webserver
+        restart: unless-stopped
+        ports:
+            - 80:80
+        volumes:
+            - ./app/src:/var/www/
+            - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+        depends_on: 
+          - app
+            
+        networks:
+          - app-network
+
+    db-admin:
+        image: adminer
+        container_name: db-admin
+        restart: unless-stopped
+        ports:
+            - 8080:8080
+        networks:
+          - app-network
+        depends_on: 
+          - db
+volumes:
+    db_data:
+    src:
+
+
+networks:
+  app-network:
+    driver: bridge
+
